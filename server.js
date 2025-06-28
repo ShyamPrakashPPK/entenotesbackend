@@ -7,6 +7,7 @@ const { setupNoteSocket } = require('./sockets/notesSocket');
 const dotenv = require('dotenv');
 const authRoutes = require('./routes/authRoutes');
 const noteRoutes = require('./routes/noteRoutes');
+require('dotenv').config();
 
 dotenv.config();
 
@@ -48,6 +49,7 @@ app.use((err, req, res, next) => {
 });
 
 // Connect to MongoDB
+console.log(process.env.MONGODB_URI, "MONGODB_URI");
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/collab_notes';
 console.log('Connecting to MongoDB at:', MONGODB_URI);
 
