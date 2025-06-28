@@ -36,34 +36,86 @@ exports.createNote = async (req, res) => {
     }
 };
 
-// Get all notes for the authenticated user
+// Get all notes for the authenticated user with advanced search and filters
 exports.getNotes = async (req, res) => {
     try {
-        // Get notes owned by user
-        const ownedNotes = await Note.find({ user: req.user.id })
+        const {
+            search,             // Search term for title
+            filter = 'all',     // Filter type: 'all', 'my', 'shared'
+            sortBy = 'updatedAt', // Sort field: 'updatedAt', 'createdAt', 'title'
+            sortOrder = 'desc',   // Sort order: 'asc', 'desc'
+            page = 1,            // Page number
+            limit = 6           // Items per page
+        } = req.query;
+
+        // Base query conditions
+        let conditions = {
+            $or: [
+                { user: req.user.id },      // Notes owned by user
+                { sharedWith: req.user.id } // Notes shared with user
+            ]
+        };
+
+        // Apply filter
+        if (filter === 'my') {
+            conditions = { user: req.user.id };
+        } else if (filter === 'shared') {
+            conditions = { sharedWith: req.user.id };
+        }
+
+        // Apply search
+        if (search) {
+            const searchRegex = new RegExp(search, 'i');
+            conditions.$and = [
+                {
+                    $or: [
+                        { title: searchRegex },
+                        { content: searchRegex }  // Search in content too
+                    ]
+                }
+            ];
+        }
+
+        // Calculate pagination
+        const skip = (parseInt(page) - 1) * parseInt(limit);
+
+        // Prepare sort object
+        const sortOptions = {};
+        sortOptions[sortBy] = sortOrder === 'asc' ? 1 : -1;
+
+        // Get total count for pagination
+        const totalCount = await Note.countDocuments(conditions);
+
+        // Execute query with all options
+        const notes = await Note.find(conditions)
+            .sort(sortOptions)
+            .skip(skip)
+            .limit(parseInt(limit))
             .populate('user', 'email')
-            .populate('sharedWith', 'email');
+            .populate('sharedWith', 'email')
+            .populate('lastEditedBy', 'email');
 
-        // Get notes shared with user
-        const sharedNotes = await Note.find({
-            sharedWith: req.user.id
-        })
-            .populate('user', 'email')
-            .populate('sharedWith', 'email');
+        // Format notes with isOwner flag
+        const formattedNotes = notes.map(note => ({
+            ...note.toObject(),
+            isOwner: note.user._id.toString() === req.user.id
+        }));
 
-        // Combine and format notes
-        const notes = [
-            ...ownedNotes.map(note => ({
-                ...note.toObject(),
-                isOwner: true
-            })),
-            ...sharedNotes.map(note => ({
-                ...note.toObject(),
-                isOwner: false
-            }))
-        ];
+        console.log(totalCount, "totalCount");
+        console.log(limit, "limit");
+        console.log(page, "page");
+        console.log(totalCount / parseInt(limit), "totalCount / parseInt(limit)");
 
-        res.json(notes);
+        // Send response with pagination info
+        res.json({
+            notes: formattedNotes,
+            pagination: {
+                total: totalCount,
+                page: parseInt(page),
+                limit: parseInt(limit),
+                totalPages: Math.ceil(totalCount / parseInt(limit))
+            }
+        });
     } catch (error) {
         console.error('Error fetching notes:', error);
         res.status(500).json({ message: 'Error fetching notes' });
