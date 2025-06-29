@@ -148,7 +148,6 @@ exports.updateNote = async (req, res) => {
             return res.status(404).json({ message: 'Note not found or access denied' });
         }
 
-        // Check if user has edit permission
         const isOwner = note.user._id.toString() === req.user.id;
         const sharedUser = note.sharedWith.find(share =>
             share.user.toString() === req.user.id
@@ -231,7 +230,6 @@ exports.shareNote = async (req, res) => {
             });
         }
 
-        // Check if note is already shared with this user
         const alreadyShared = note.sharedWith.some(share =>
             share.user.toString() === targetUser._id.toString()
         );
@@ -272,7 +270,7 @@ exports.updateSharedUser = async (req, res) => {
 
         const note = await Note.findOne({
             _id: noteId,
-            user: req.user.id // Only owner can update sharing
+            user: req.user.id 
         });
 
         if (!note) {
@@ -281,7 +279,6 @@ exports.updateSharedUser = async (req, res) => {
             });
         }
 
-        // Find and update the shared user
         const sharedUserIndex = note.sharedWith.findIndex(
             share => share._id.toString() === shareId
         );
@@ -313,7 +310,7 @@ exports.removeSharedUser = async (req, res) => {
 
         const note = await Note.findOne({
             _id: noteId,
-            user: req.user.id // Only owner can remove sharing
+            user: req.user.id 
         });
 
         if (!note) {
@@ -322,7 +319,6 @@ exports.removeSharedUser = async (req, res) => {
             });
         }
 
-        // Remove the shared user
         const originalLength = note.sharedWith.length;
         note.sharedWith = note.sharedWith.filter(
             share => share._id.toString() !== shareId
