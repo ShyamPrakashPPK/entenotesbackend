@@ -18,5 +18,7 @@ router.delete('/:id', noteController.deleteNote);
 
 // Sharing routes
 router.post('/:id/share', noteController.shareNote);
+router.put('/:id/share/:shareId', noteController.updateSharedUser);
+router.delete('/:id/share/:shareId', noteController.removeSharedUser);
 
 module.exports = router;

@@ -37,7 +37,7 @@ const verifyNoteAccess = async (userId, noteId) => {
             _id: noteId,
             $or: [
                 { user: userId },
-                { sharedWith: userId }
+                { 'sharedWith.user': userId }
             ]
         });
         return note;
@@ -124,6 +124,19 @@ exports.setupNoteSocket = (serverIo) => {
                     return;
                 }
 
+                // Check if user has edit permission
+                const isOwner = note.user.toString() === socket.userId;
+                const sharedUser = note.sharedWith.find(share =>
+                    share.user.toString() === socket.userId
+                );
+                const hasEditPermission = isOwner || (sharedUser && sharedUser.permission === 'edit');
+
+                // Only allow users with edit permission to send updates
+                if (!hasEditPermission) {
+                    socket.emit('error', { message: 'You do not have permission to edit this note' });
+                    return;
+                }
+
                 // Update the note in database
                 await Note.findByIdAndUpdate(
                     noteId,
@@ -134,7 +147,7 @@ exports.setupNoteSocket = (serverIo) => {
                     }
                 );
 
-                // Broadcast to others in the room
+                // Broadcast real-time updates to all other users in the room (including view-only)
                 socket.to(noteId).emit('note:updated', {
                     content,
                     userId: socket.userId

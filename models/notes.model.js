@@ -17,8 +17,15 @@ const noteSchema = new mongoose.Schema({
         required: true
     },
     sharedWith: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
+        user: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+        },
+        permission: {
+            type: String,
+            enum: ['view', 'edit'],
+            default: 'edit'
+        }
     }],
     lastEditedBy: {
         type: mongoose.Schema.Types.ObjectId,
